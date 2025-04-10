@@ -2,7 +2,10 @@
 
 Collaborate and innovate for 2 days, and unleash AI's potential for education!
 
-Develop innovative, AI-driven solutions that revolutionize education by creating personalized, accessible, and engaging learning experiences. Participants are tasked with leveraging artificial intelligence to address real educational problems, from personalized learning companions and real-time knowledge gap identification to adaptive visualization and improved accessibility, ultimately shaping a future where education is more effective and equitable for all.
+Develop innovative, AI-driven solutions that revolutionize education by creating personalized, accessible, and engaging
+learning experiences. Participants are tasked with leveraging artificial intelligence to address real educational
+problems, from personalized learning companions and real-time knowledge gap identification to adaptive visualization and
+improved accessibility, ultimately shaping a future where education is more effective and equitable for all.
 
 ## When
 2 - 3 Oct 2025
@@ -16,13 +19,20 @@ Voutes Campus
 
 This repository contains the code for the API of the hackathon. It is built using NestJS and LangChain.
 
+Everything is contained in the `api` folder. The idea is to follow a "monorepo" pattern, where the entire solution is
+under a single repo and different folders contain different parts of the solution. To this end the `api` folder
+represents the "backend" implementation of the solution providing a Restfull API. Please feel free to expand/alter
+the code and structure to fit your specific requirements and approach.
+
 ## Pre-requisites
 
 On the software side you just need [Docker](https://www.docker.com/).
 
-On the AI side we will be utilizing **Amazon Bedrock**, a fully managed service that makes foundation models (FMs) from leading AI companies available via an API.
+On the AI side we will be utilizing **Amazon Bedrock**, a fully managed service that makes foundation models (FMs) from
+leading AI companies available via an API.
 
-On the config side, you will need to copy the `.env.example` file to `.env` in the `api` folder and fill in with the provided values.
+On the config side, you will need to copy the `.env.example` file to `.env` in the `api` folder and fill in with the
+provided values.
 
 ```
 AWS_ACCESS_KEY_ID=""
@@ -57,7 +67,8 @@ The API provides the following services:
 - **Stream**: A service that generates a response based on a given prompt and streams the response back to the client.
 - **Chat**: A chat interface that allows you to interact with the AI model in a conversational way.
 - **Embeddings**: A service that generates embeddings for a given text.
-- **RAG**: A service that uses the AI model, embeddings, and vector store to provide relevant information based on a query.
+- **RAG**: A service that uses the AI model, embeddings, and vector store to provide relevant information based on a
+query.
 
 ## GenAI
 

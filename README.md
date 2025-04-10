@@ -11,8 +11,8 @@ improved accessibility, ultimately shaping a future where education is more effe
 2 - 3 Oct 2025
 
 ## Where
-Computer Science Department - University of Crete
-Voutes Campus
+Computer Science Department - University of Crete\
+Voutes Campus\
 70013 Heraklion Crete, Greece
 
 # About this repo
@@ -55,6 +55,7 @@ Inside the docker container, run the following commands to install the dependenc
 
 ```
 cd api/
+npm install
 npm run start:dev --env-file .env
 ```
 

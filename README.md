@@ -133,6 +133,9 @@ curl -vv "http://localhost:3000/genai/embeddings?message=What+is+the+capital+of+
 ```
 curl -vv "http://localhost:3000/genai/rag?message=Did+the+Queen+turned+purple"
 ```
+# Dataset
+
+We have prepared a synthetic dataset that you can use for your project (part synthetic, part actual data from the course catalog of CSD). The dataset is in SQL format (MySQL dump file) and is located at `api/data/dataset.sql`.
 
 # Resources
 - [NestJS](https://nestjs.com/)

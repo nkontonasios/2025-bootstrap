@@ -136,6 +136,7 @@ curl -vv "http://localhost:3000/genai/rag?message=Did+the+Queen+turned+purple"
 # Dataset
 
 We have prepared a synthetic dataset that you can use for your project (part synthetic, part actual data from the course catalog of CSD). The dataset is in SQL format (MySQL dump file) and is located at `api/data/dataset.sql`.
+![Sequel Ace screenshot of dataset](./images/dataset.png)
 
 # Resources
 - [NestJS](https://nestjs.com/)

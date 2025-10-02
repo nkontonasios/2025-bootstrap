@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Course Outline - Structured OCR Output",
+  "type": "object",
+  "properties": {
+    "general_info": {
+      "type": "object",
+      "description": "Facts that identify the course and how/where it is taught.",
+      "properties": {
+        "course_id": { "type": "string", "description": "Internal or catalog code (e.g., HY-109)." },
+        "course_title": { "type": "string", "description": "Official course title in the document's language." },
+        "instructor": { "type": "string", "description": "Primary instructor/lecturer name exactly as printed." },
+        "teaching_semester": { "type": "string", "description": "Term/semester the course runs (e.g., Fall, Spring)." },
+        "school": { "type": "string", "description": "School or faculty name." },
+        "department": { "type": "string", "description": "Department/Unit offering the course." },
+        "study_level": { "type": "string", "description": "Level of study (e.g., Undergraduate, Graduate)." },
+        "semester_of_studies": { "type": "string", "description": "Which study semester this course belongs to (e.g., 2nd)." },
+        "autonomous_teaching_activities": {
+          "type": "object",
+          "description": "Summary of the main teaching activity and load.",
+          "properties": {
+            "activity_type": { "type": "string", "description": "Label of the activity (e.g., Lectures, Labs)." },
+            "weekly_teaching_hours": { "type": "number", "description": "Weekly contact hours for the activity." },
+            "ects_credits": { "type": "number", "description": "Credits/ECTS assigned to the course." }
+          },
+          "required": ["activity_type", "weekly_teaching_hours", "ects_credits"],
+          "additionalProperties": true
+        },
+        "course_type": { "type": "string", "description": "Category such as Core, Elective, Skills Development, etc." },
+        "prerequisite_courses": {
+          "type": "array",
+          "description": "Course codes/titles that must be completed beforehand, if listed.",
+          "items": { "type": "string" }
+        },
+        "language_of_instruction_and_exams": { "type": "string", "description": "Language(s) used for teaching and assessment." },
+        "offered_to_erasmus_students": { "type": "string", "description": "Yes/No or note about availability to exchange students." },
+        "course_website": { "type": "string", "format": "uri", "description": "Course URL if present." }
+      },
+      "required": ["course_id", "course_title"],
+      "additionalProperties": true
+    },
+
+    "course_objectives": {
+      "type": "object",
+      "description": "What students are expected to achieve and the broader competencies trained.",
+      "properties": {
+        "learning_outcomes_text": { "type": "string", "description": "Free-form text with the learning outcomes exactly as written (multiple paragraphs allowed)." },
+        "general_competencies": {
+          "type": "array",
+          "description": "Bullet list of generic competencies/skills (each item one bullet).",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["learning_outcomes_text"],
+      "additionalProperties": false
+    },
+
+    "course_content": {
+      "type": "string",
+      "description": "One large string that preserves the listed topics/units in order (bullets or lines)."
+    },
+
+    "student_evaluation": {
+      "type": "object",
+      "description": "How the course is delivered, workload, and how students are assessed.",
+      "properties": {
+        "delivery_mode": { "type": "string", "description": "Mode of delivery (e.g., face-to-face, blended, distance)." },
+        "use_of_ict": {
+          "type": "array",
+          "description": "Tools/platforms used (e.g., email, LMS, course website).",
+          "items": { "type": "string" }
+        },
+        "learning_activities_and_workload": {
+          "type": "array",
+          "description": "Named activities with estimated hours (e.g., Lectures 52, Study 50).",
+          "items": {
+            "type": "object",
+            "properties": {
+              "activity": { "type": "string", "description": "Activity label as printed." },
+              "workload_hours": { "type": "number", "description": "Estimated hours for the activity." }
+            },
+            "required": ["activity", "workload_hours"],
+            "additionalProperties": false
+          }
+        },
+        "total_workload_hours": { "type": "number", "description": "Sum of all hours if given." },
+        "assessment": {
+          "type": "object",
+          "description": "Assessment language and components with weights/notes.",
+          "properties": {
+            "assessment_language": { "type": "string", "description": "Language used in assessments/exams." },
+            "components": {
+              "type": "array",
+              "description": "Each assessment element with its contribution (percent or note such as bonus).",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "description": "Component name (e.g., Presentation, Final exam)." },
+                  "weight": { "type": "string", "description": "Weight as printed (e.g., '20% (bonus)', '100%')." },
+                  "notes": { "type": "string", "description": "Any extra conditions/instructions if present." }
+                },
+                "required": ["name", "weight"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["components"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "suggested_bibliography": {
+      "type": "string",
+      "description": "Single free-form field that captures any bibliography section exactly as shown (recommended books, instructor notes, related journals, etc.). If there are headings/subsections, keep them inline as text."
+    }
+  },
+  "required": [
+    "general_info",
+    "course_objectives",
+    "course_content",
+    "student_evaluation",
+    "suggested_bibliography"
+  ],
+  "additionalProperties": false
+}

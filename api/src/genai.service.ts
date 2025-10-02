@@ -4,6 +4,8 @@ import { IterableReadableStream } from "@langchain/core/dist/utils/stream";
 import { AIMessageChunk } from "@langchain/core/messages";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { MemoryVectorStore } from "langchain/vectorstores/memory";
+import { Chroma } from "@langchain/community/vectorstores/chroma";
+import { HNSWLib } from "@langchain/community/vectorstores/hnswlib";
 import { TextLoader } from "langchain/document_loaders/fs/text";
 import { Document } from "@langchain/core/documents";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
@@ -11,11 +13,13 @@ import { pull } from "langchain/hub";
 import { Annotation, StateGraph } from "@langchain/langgraph";
 import { ChatDto } from "./chat.dto";
 import { TYPES } from "./message.dto";
+const fs = require("fs");
 
 @Injectable()
 export class GenAIService {
   static GENAI_MODEL = "anthropic.claude-3-5-sonnet-20240620-v1:0";
   static EMBEDDINGS_MODEL = "amazon.titan-embed-text-v2:0";
+  static VECTORSTORE_DIR = "data/vectorstores"
 
   getGenAIModel() {
     return new ChatBedrockConverse({
@@ -29,6 +33,10 @@ export class GenAIService {
     });
   }
 
+  /**
+   * Gets the embeddings model instance.
+   * @returns The BedrockEmbeddings model instance.
+   */
   getEmbeddingsModel() {
     return new BedrockEmbeddings({
       maxRetries: 0,
@@ -42,6 +50,11 @@ export class GenAIService {
     });
   }
 
+  /**
+   * Prompts the Generative AI model with a message.
+   * @param message The message to send to the model.
+   * @returns The response text from the model or null if an error occurs.
+   */
   async prompt(message: string): Promise<string | null> {
     try {
       const model = this.getGenAIModel();
@@ -54,6 +67,11 @@ export class GenAIService {
     }
   }
 
+  /**
+   * Streams a response from the Generative AI model based on a message.
+   * @param message The message to send to the model.
+   * @returns An iterable stream of AI message chunks or null if an error occurs.
+   */
   async stream(message: string): Promise<IterableReadableStream<AIMessageChunk> | null> {
     try {
       const model = this.getGenAIModel();
@@ -64,6 +82,11 @@ export class GenAIService {
     }
   }
 
+  /**
+   * Chats with the Generative AI model using a ChatDto object.
+   * @param chatDto The ChatDto containing messages to send to the model.
+   * @returns The response text from the model or null if an error occurs.
+   */
   async chat(chatDto: ChatDto): Promise<string | null> {
     try {
       const model = this.getGenAIModel();
@@ -82,6 +105,11 @@ export class GenAIService {
     }
   }
 
+  /**
+   * Generates embeddings for a given message.
+   * @param message The message to generate embeddings for.
+   * @returns A string representation of the first embedding or null if an error occurs.
+   */
   async embeddings(message: string): Promise<string | null> {
     try {
       const model = this.getEmbeddingsModel();
@@ -95,6 +123,103 @@ export class GenAIService {
     }
   }
 
+  /**
+   * Indexes documents from a specified directory into a vector store.
+   * @param name The name of the vector store to save.
+   * @param srcDir The source directory containing documents to index.
+   * @returns The HNSWLib vector store or null if an error occurs.
+   */
+  async index(name: string, srcDir: string): Promise<HNSWLib | null> {
+    try {
+      const embeddingsModel = this.getEmbeddingsModel();
+      const srcDirPath = process.cwd() + '/data/' + srcDir;
+      const files = fs.readdirSync(srcDirPath);
+      const docs: Document[] = [];
+
+      for (const file of files) {
+        const docLoader = new TextLoader(process.cwd() + '/data/' + srcDir + "/" + file);
+        const loadedDoc = await docLoader.load();
+        docs.push(...loadedDoc);
+      }
+
+      const splitter = new RecursiveCharacterTextSplitter({
+        chunkSize: 1000, chunkOverlap: 200
+      });
+      const allSplits = await splitter.splitDocuments(docs);
+
+      const vectorStore = await HNSWLib.fromDocuments(allSplits, embeddingsModel);
+      await vectorStore.save(process.cwd() + "/" + GenAIService.VECTORSTORE_DIR + "/" + name);
+      return vectorStore;
+
+    } catch (err) {
+      console.log("Error in GenAIService.rag:", err);
+      return null;
+    }
+  }
+
+  /**
+   * Retrieves and generates a response based on indexed documents.
+   * @param message The query message to process.
+   * @param collectionName The name of the collection to retrieve from.
+   * @returns The generated answer or null if an error occurs.
+   */
+  async ragIndexed(message: string, collectionName: string): Promise<string | null> {
+    try {
+      // Load the LLM and embeddings model
+      const llm = this.getGenAIModel();
+      const embeddingsModel = this.getEmbeddingsModel();
+      const vectorStore = await HNSWLib.load(process.cwd() + "/" + GenAIService.VECTORSTORE_DIR + "/" + collectionName, embeddingsModel);
+
+      const promptTemplate = await pull<ChatPromptTemplate>("rlm/rag-prompt");
+
+      const InputStateAnnotation = Annotation.Root({
+        question: Annotation<string>,
+      });
+
+      const StateAnnotation = Annotation.Root({
+        question: Annotation<string>,
+        context: Annotation<Document[]>,
+        answer: Annotation<string>,
+      });
+
+      const retrieve = async (state: typeof InputStateAnnotation.State) => {
+        const retrievedDocs = await vectorStore.similaritySearch(state.question);
+        return { context: retrievedDocs };
+      };
+
+      const generate = async (state: typeof StateAnnotation.State) => {
+        const docsContent = state.context.map(doc => doc.pageContent).join("\n");
+        const messages = await promptTemplate.invoke({ question: state.question, context: docsContent });
+        const response = await llm.invoke(messages);
+        return { answer: response.content };
+      };
+
+      const graph = new StateGraph(StateAnnotation)
+          .addNode("retrieve", retrieve)
+          .addNode("generate", generate)
+          .addEdge("__start__", "retrieve")
+          .addEdge("retrieve", "generate")
+          .addEdge("generate", "__end__")
+          .compile();
+
+      // Invoke the graph and get the result
+      const result = await graph.invoke({ question: message });
+
+      console.log(`\nCitations: ${result.context.length}`);
+      console.log(result.context.slice(0, 2));
+
+      return result.answer;
+    } catch ( err ) {
+      console.log("Error in GenAIService.rag:", err);
+      return null;
+    }
+  }
+
+  /**
+   * Performs a retrieval-augmented generation (RAG) process.
+   * @param message The query message to process.
+   * @returns The generated answer or null if an error occurs.
+   */
   async rag(message: string): Promise<string | null> {
     try {
       // Create the models (LLM, embeddings)
@@ -127,7 +252,7 @@ export class GenAIService {
       });
 
       const retrieve = async (state: typeof InputStateAnnotation.State) => {
-        const retrievedDocs = await vectorStore.similaritySearch(state.question)
+        const retrievedDocs = await vectorStore.similaritySearch(state.question);
         return { context: retrievedDocs };
       };
 

@@ -98,6 +98,39 @@ export class GenAIController {
     return response;
   }
 
+  @Get('index')
+  @ApiOperation({ summary: 'Index a collection of files.' })
+  @ApiOkResponse({
+    description: 'The response from the model.'
+  })
+  @ApiResponse({ status: 500, description: 'Internal server error.'})
+  async index(@Query('name') name: string, @Query('srcDir') srcDir: string): Promise<string> {
+    const response = await this.genAIService.index(name, srcDir);
+
+    if (response === null) {
+      throw new HttpException('Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    const totalVectors = response.index.getCurrentCount();
+    return `Successfully indexed ${totalVectors} chunks!`;
+  }
+
+  @Get('ragIndexed')
+  @ApiOperation({ summary: 'Exchange a message with an GenAI model using RAG with an indexed collection.' })
+  @ApiOkResponse({
+    description: 'The response from the model.'
+  })
+  @ApiResponse({ status: 500, description: 'Internal server error.'})
+  async ragIndexed(@Query('message') message: string, @Query('collectionName') collectionName: string): Promise<string> {
+    const response = await this.genAIService.ragIndexed(message, collectionName);
+
+    if (response === null) {
+      throw new HttpException('Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    return response;
+  }
+
   @Get('rag')
   @ApiOperation({ summary: 'Exchange a message with an GenAI model using RAG.' })
   @ApiOkResponse({

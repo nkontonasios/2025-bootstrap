@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Course Outline - Structured OCR Output",
+  "title": "Course Outline – Structured OCR Output",
   "type": "object",
   "properties": {
     "general_info": {
@@ -8,7 +8,7 @@
       "description": "Facts that identify the course and how/where it is taught.",
       "properties": {
         "course_id": { "type": "string", "description": "Internal or catalog code (e.g., HY-109)." },
-        "course_title": { "type": "string", "description": "Official course title in the document's language." },
+        "course_title": { "type": "string", "description": "Official course title in the document’s language." },
         "instructor": { "type": "string", "description": "Primary instructor/lecturer name exactly as printed." },
         "teaching_semester": { "type": "string", "description": "Term/semester the course runs (e.g., Fall, Spring)." },
         "school": { "type": "string", "description": "School or faculty name." },

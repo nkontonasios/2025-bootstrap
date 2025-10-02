@@ -13,7 +13,16 @@ import { pull } from "langchain/hub";
 import { Annotation, StateGraph } from "@langchain/langgraph";
 import { ChatDto } from "./chat.dto";
 import { TYPES } from "./message.dto";
-const fs = require("fs");
+
+import {
+  BedrockRuntimeClient,
+  ConverseCommand,
+  type ConverseCommandInput,
+} from "@aws-sdk/client-bedrock-runtime";
+import type { FromSchema } from "json-schema-to-ts";
+import { PDFLoader } from "@langchain/community/document_loaders/fs/pdf";
+const fs = require("node:fs/promises");
+const path = require("path");
 
 @Injectable()
 export class GenAIService {
@@ -131,9 +140,14 @@ export class GenAIService {
    */
   async index(name: string, srcDir: string): Promise<HNSWLib | null> {
     try {
+      const METADATA_FIELDS = ["general_info"]
+      const Index_fields = ["course_objectives", "course_content", "student_evaluation"]
+
+
+
       const embeddingsModel = this.getEmbeddingsModel();
       const srcDirPath = process.cwd() + '/data/' + srcDir;
-      const files = fs.readdirSync(srcDirPath);
+      const files = await fs.readdir(srcDirPath);
       const docs: Document[] = [];
 
       for (const file of files) {
@@ -282,5 +296,93 @@ export class GenAIService {
       console.log("Error in GenAIService.rag:", err);
       return null;
     }
+  }
+
+
+  async pdfToStructuredJson(): Promise<string> {
+    const client = new BedrockRuntimeClient({
+      region: process.env.AWS_REGION || "us-east-1",
+    });
+
+    const schemaPath = path.join(process.cwd(), "src", "schemas", "course_schema.json");
+    const schema = JSON.parse(await fs.readFile(schemaPath, "utf-8"));
+    const toolName = "output";
+
+
+    let files = await fs.readdir(path.join(process.cwd(), "data", "pdfs"));
+    files.filter((f: string) => f.toLowerCase().endsWith(".pdf"));
+
+    for (const file of files) {
+      const pdfPath = path.join(process.cwd(), "data", "pdfs", file);
+      console.log(pdfPath);
+      const pdfBytes = await fs.readFile(pdfPath);
+
+      const input: ConverseCommandInput = {
+        modelId: "anthropic.claude-3-5-sonnet-20240620-v1:0",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                text:
+                  `Extract the structured data from this PDF. 
+  Return the result by "calling" the tool named "${toolName}" using parameters that EXACTLY match the input schema. 
+  Do not include prose outside the tool call.`,
+              },
+              {
+                document: {
+                  format: "pdf",
+                  name: "pdf1",
+                  source: { bytes: pdfBytes },
+                },
+              },
+              { text: `Schema (for reference):\n${JSON.stringify(schema, null, 2)}` },
+            ],
+          },
+        ],
+
+        toolConfig: {
+          tools: [
+            {
+              toolSpec: {
+                name: toolName,
+                description: "Return the extracted data in this schema.",
+                inputSchema: {
+                  json: schema,
+                },
+              },
+            },
+          ],
+        },
+
+        inferenceConfig: { maxTokens: 2000, temperature: 0.05 },
+      };
+
+      const resp = await client.send(new ConverseCommand(input));
+
+      const contentBlocks = resp.output?.message?.content ?? [];
+      console.log(contentBlocks);
+
+
+      // Claude returns something like: { toolUse: { name, input: {...} } }
+      const toolUseBlock = contentBlocks.find((b: any) => b?.toolUse)?.toolUse;
+      if (!toolUseBlock) {
+        // Fallback: if the model replied as plain text, try to parse JSON text
+        const text = contentBlocks.find((b: any) => b?.text)?.text?.trim() ?? "";
+        if (!text) throw new Error("No toolUse block and no text response from model.");
+        // best-effort JSON extraction
+        const start = text.indexOf("{");
+        const end = text.lastIndexOf("}");
+        const jsonStr = start >= 0 && end >= 0 ? text.slice(start, end + 1) : text;
+        return jsonStr;
+      }
+
+      // toolUseBlock.input already matches your schema
+      await fs.writeFile(pdfPath + ".json", JSON.stringify(toolUseBlock.input) + "\n", function (err) {
+        if (err) throw err;
+        console.log('Saved!');
+      });
+    }
+    return "OK";
   }
 }

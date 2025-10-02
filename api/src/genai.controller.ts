@@ -146,4 +146,21 @@ export class GenAIController {
 
     return response;
   }
+
+
+  @Get('pdfToStructuredJson')
+  @ApiOperation({ summary: 'Convert PDFs to JSON' })
+  @ApiOkResponse({
+    description: 'The response from the model.'
+  })
+  @ApiResponse({ status: 500, description: 'Internal server error.'})
+  async pdfToStructuredJson(@Query('message') message: string): Promise<string> {
+    const response = await this.genAIService.pdfToStructuredJson();
+
+    if (response === null) {
+      throw new HttpException('Internal server error', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    return response;
+  }
 }
